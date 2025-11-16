@@ -2,6 +2,7 @@ package toolkit
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -334,4 +335,72 @@ func TestTools_Slugify(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTools_DownloadStaticFile(t *testing.T) {
+	var testTools Tools
+
+	t.Run("download de arquivo com sucesso", func(t *testing.T) {
+		// Cria um diretório e um arquivo temporários para o teste
+		tempDir, err := os.MkdirTemp("", "download_test")
+		if err != nil {
+			t.Fatalf("Falha ao criar diretório temporário: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		filePath := filepath.Join(tempDir, "testfile.txt")
+		content := []byte("Este é o conteúdo do arquivo de teste.")
+		err = os.WriteFile(filePath, content, 0644)
+		if err != nil {
+			t.Fatalf("Falha ao escrever no arquivo temporário: %v", err)
+		}
+
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/download", nil)
+
+		displayName := "meu_arquivo_legal.txt"
+		testTools.DownloadStaticFile(rr, req, tempDir, "testfile.txt", displayName)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("status incorreto: esperado %d, mas obteve %d", http.StatusOK, rr.Code)
+		}
+
+		expectedHeader := fmt.Sprintf("attachment; filename=\"%s\"", displayName)
+		if rr.Header().Get("Content-Disposition") != expectedHeader {
+			t.Errorf("cabeçalho Content-Disposition incorreto: esperado '%s', mas obteve '%s'", expectedHeader, rr.Header().Get("Content-Disposition"))
+		}
+
+		if !bytes.Equal(rr.Body.Bytes(), content) {
+			t.Error("o corpo da resposta não corresponde ao conteúdo do arquivo")
+		}
+	})
+
+	t.Run("arquivo não encontrado", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/download", nil)
+
+		testTools.DownloadStaticFile(rr, req, "./nonexistent", "nonexistent.txt", "nonexistent.txt")
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("status incorreto para arquivo não encontrado: esperado %d, mas obteve %d", http.StatusNotFound, rr.Code)
+		}
+	})
+
+	t.Run("tentativa de download de um diretório", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "download_dir_test")
+		if err != nil {
+			t.Fatalf("Falha ao criar diretório temporário: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/", nil)
+
+		// Tenta servir o diretório como se fosse um arquivo
+		testTools.DownloadStaticFile(rr, req, filepath.Dir(tempDir), filepath.Base(tempDir), "diretorio")
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("status incorreto para diretório: esperado %d, mas obteve %d", http.StatusNotFound, rr.Code)
+		}
+	})
 }

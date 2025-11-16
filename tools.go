@@ -196,3 +196,33 @@ func (t *Tools) Slugify(s string) (string, error) {
 	}
 	return slug, nil
 }
+
+func (t *Tools) DownloadStaticFile(w http.ResponseWriter, r *http.Request, path, fileName, displayName string) {
+	filePath := filepath.Join(path, fileName)
+
+	// Verifica se o caminho é um diretório. Se for, não serve o arquivo.
+	fileInfo, err := os.Stat(filePath)
+	if err == nil && fileInfo.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Tenta abrir o arquivo para verificar se há erros de permissão antes de servir.
+	// Isso torna o tratamento de erros mais explícito, especialmente para casos de bloqueio de arquivo no Windows.
+	f, err := os.Open(filePath)
+	if err != nil {
+		// Se o erro for de permissão, retorna 403. Para outros erros (como "não encontrado"),
+		// deixamos http.ServeFile lidar para garantir o código de status correto (404).
+		if os.IsPermission(err) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	} else {
+		// Fecha o arquivo apenas se ele foi aberto com sucesso.
+		f.Close()
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", displayName))
+
+	http.ServeFile(w, r, filePath)
+}
