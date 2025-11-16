@@ -260,3 +260,41 @@ func TestTools_UploadFiles(t *testing.T) {
 	// Limpa o diretório de uploads após todos os testes
 	_ = os.RemoveAll(uploadPath)
 }
+
+func TestTools_CreateDirIfNotExist(t *testing.T) {
+	var testTools Tools
+
+	t.Run("cria diretório que não existe", func(t *testing.T) {
+		// Define um caminho de diretório temporário que certamente não existe
+		tempDir := filepath.Join(os.TempDir(), "test_create_dir")
+		// Garante que o diretório seja removido no final do teste
+		defer os.RemoveAll(tempDir)
+
+		// Remove o diretório para garantir que o teste comece do zero
+		_ = os.RemoveAll(tempDir)
+
+		err := testTools.CreateDirIfNotExist(tempDir)
+		if err != nil {
+			t.Fatalf("CreateDirIfNotExist retornou um erro inesperado: %v", err)
+		}
+
+		// Verifica se o diretório foi realmente criado
+		if _, err := os.Stat(tempDir); os.IsNotExist(err) {
+			t.Error("O diretório não foi criado, mas deveria ter sido")
+		}
+	})
+
+	t.Run("tenta criar diretório que já existe", func(t *testing.T) {
+		// Cria um diretório temporário que já existe
+		tempDir, err := os.MkdirTemp("", "test_dir_exists")
+		if err != nil {
+			t.Fatalf("Falha ao criar diretório temporário: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		err = testTools.CreateDirIfNotExist(tempDir)
+		if err != nil {
+			t.Errorf("CreateDirIfNotExist retornou um erro para um diretório existente: %v", err)
+		}
+	})
+}

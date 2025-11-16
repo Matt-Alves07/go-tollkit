@@ -167,3 +167,17 @@ func (t *Tools) isAllowedType(fileType string) bool {
 	}
 	return false
 }
+
+// CreateDirIfNotExist cria um diretório se ele não existir.
+func (t *Tools) CreateDirIfNotExist(dir string) error {
+	const mode = 0755
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
