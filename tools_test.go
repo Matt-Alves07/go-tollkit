@@ -298,3 +298,40 @@ func TestTools_CreateDirIfNotExist(t *testing.T) {
 		}
 	})
 }
+
+func TestTools_Slugify(t *testing.T) {
+	var testTools Tools
+
+	testCases := []struct {
+		name          string
+		input         string
+		expected      string
+		expectedError bool
+	}{
+		{name: "string normal", input: "Olá Mundo", expected: "ol-mundo", expectedError: false},
+		{name: "string com hífens", input: "---Olá---Mundo---", expected: "ol-mundo", expectedError: false},
+		{name: "string com caracteres especiais", input: "Olá, Mundo! 123?", expected: "ol-mundo-123", expectedError: false},
+		{name: "string já como slug", input: "ola-mundo-123", expected: "ola-mundo-123", expectedError: false},
+		{name: "string vazia", input: "", expected: "", expectedError: true},
+		{name: "string que se torna vazia", input: "!@#$%*", expected: "", expectedError: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			slug, err := testTools.Slugify(tc.input)
+
+			if tc.expectedError {
+				if err == nil {
+					t.Error("um erro era esperado, mas nenhum foi recebido")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("erro inesperado recebido: %v", err)
+				}
+				if slug != tc.expected {
+					t.Errorf("slug incorreto: esperado '%s', mas obteve '%s'", tc.expected, slug)
+				}
+			}
+		})
+	}
+}
