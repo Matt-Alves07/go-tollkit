@@ -469,3 +469,53 @@ func TestTools_ReadJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestTools_WriteJSON(t *testing.T) {
+	var testTools Tools
+
+	testCases := []struct {
+		name          string
+		status        int
+		data          interface{}
+		headers       http.Header
+		expectedError bool
+	}{
+		{name: "json válido", status: http.StatusOK, data: struct{ Foo string }{Foo: "bar"}, headers: nil, expectedError: false},
+		{name: "json válido com cabeçalhos", status: http.StatusCreated, data: struct{ Foo string }{Foo: "bar"}, headers: http.Header{"X-Custom": []string{"valor"}}, expectedError: false},
+		{name: "dados não serializáveis", status: http.StatusOK, data: make(chan int), headers: nil, expectedError: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+
+			err := testTools.WriteJSON(rr, tc.status, tc.data, tc.headers)
+
+			if tc.expectedError {
+				if err == nil {
+					t.Error("um erro era esperado, mas nenhum foi recebido")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("erro inesperado recebido: %v", err)
+				}
+
+				if rr.Code != tc.status {
+					t.Errorf("status incorreto: esperado %d, mas obteve %d", tc.status, rr.Code)
+				}
+
+				if rr.Header().Get("Content-Type") != "application/json" {
+					t.Errorf("cabeçalho Content-Type incorreto: esperado 'application/json', mas obteve '%s'", rr.Header().Get("Content-Type"))
+				}
+
+				if len(tc.headers) > 0 {
+					for key, value := range tc.headers {
+						if rr.Header().Get(key) != value[0] {
+							t.Errorf("cabeçalho customizado '%s' incorreto: esperado '%s', mas obteve '%s'", key, value[0], rr.Header().Get(key))
+						}
+					}
+				}
+			}
+		})
+	}
+}

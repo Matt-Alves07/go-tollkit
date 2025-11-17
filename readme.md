@@ -5,7 +5,7 @@ A simple example of how to create a reusable Go module with commonly used tools.
 The included tools are:
 
 - [X] Read JSON
-- [ ] Write JSON
+- [X] Write JSON
 - [ ] Produce a JSON encoded error response
 - [X] Upload a file to a specified directory
 - [X] Upload multiple files to a specified directory
@@ -44,6 +44,8 @@ func main() {
 	// Configura os handlers para as rotas de upload
 	http.HandleFunc("/upload-single", uploadSingleFileHandler)
 	http.HandleFunc("/upload-multiple", uploadMultipleFilesHandler)
+	http.HandleFunc("/write-json", writeJSONHandler)
+	http.HandleFunc("/read-json", readJSONHandler)
 
 	fmt.Println("Servidor iniciado na porta 8080")
 	fmt.Println("Use os endpoints /upload-single ou /upload-multiple para testar.")
@@ -116,5 +118,44 @@ func uploadMultipleFilesHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "- Nome original: %s, Novo nome: %s, Tamanho: %d bytes\n",
 			file.OriginalFileName, file.NewFileName, file.FileSize)
 	}
+}
+
+// readJSONHandler demonstra o uso da função ReadJSON.
+func readJSONHandler(w http.ResponseWriter, r *http.Request) {
+	var tools toolkit.Tools
+	var payload struct {
+		Foo string `json:"foo"`
+	}
+
+	err := tools.ReadJSON(w, r, &payload)
+	if err != nil {
+		_ = tools.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	response := struct {
+		Error   bool   `json:"error"`
+		Message string `json:"message"`
+	}{
+		Error:   false,
+		Message: fmt.Sprintf("Recebido o valor: %s", payload.Foo),
+	}
+
+	_ = tools.WriteJSON(w, http.StatusAccepted, response)
+}
+
+// writeJSONHandler demonstra o uso da função WriteJSON.
+func writeJSONHandler(w http.ResponseWriter, r *http.Request) {
+	var tools toolkit.Tools
+
+	payload := struct {
+		Error   bool   `json:"error"`
+		Message string `json:"message"`
+	}{
+		Error:   false,
+		Message: "Esta é uma resposta JSON de exemplo",
+	}
+
+	_ = tools.WriteJSON(w, http.StatusOK, payload)
 }
 ```

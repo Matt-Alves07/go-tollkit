@@ -237,6 +237,9 @@ type JSONResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// WriteJSON efetua a leitura de um JSON, valida se eh um JSON valido,
+// comparando com a interface de destino dos dados, e retorna erros detalhados
+// em caso de falha na leitura ou validação.
 func (t *Tools) ReadJSON(w http.ResponseWriter, r *http.Request, data interface{}) error {
 	maxBytes := 1024 * 1024 // 1 MB
 	if t.MaxJSONSize > 0 {
@@ -279,6 +282,26 @@ func (t *Tools) ReadJSON(w http.ResponseWriter, r *http.Request, data interface{
 	err = dec.Decode(&struct{}{})
 	if err != io.EOF {
 		return errors.New("body must only contain a single JSON value")
+	}
+	return nil
+}
+
+// WriteJSON recebe uma interface, converte para JSON e escreve no response writer.
+func (t *Tools) WriteJSON(w http.ResponseWriter, status int, data interface{}, headers ...http.Header) error {
+	out, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if len(headers) > 0 {
+		for key, value := range headers[0] {
+			w.Header()[key] = value
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, err = w.Write(out)
+	if err != nil {
+		return err
 	}
 	return nil
 }
