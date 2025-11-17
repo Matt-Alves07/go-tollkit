@@ -286,7 +286,7 @@ func (t *Tools) ReadJSON(w http.ResponseWriter, r *http.Request, data interface{
 	return nil
 }
 
-// WriteJSON recebe uma interface, converte para JSON e escreve no response writer.
+// WriteJSON recebe uma interface e um statusCode, converte para JSON e escreve no response writer.
 func (t *Tools) WriteJSON(w http.ResponseWriter, status int, data interface{}, headers ...http.Header) error {
 	out, err := json.Marshal(data)
 	if err != nil {
@@ -304,4 +304,18 @@ func (t *Tools) WriteJSON(w http.ResponseWriter, status int, data interface{}, h
 		return err
 	}
 	return nil
+}
+
+// ErrorJSON escreve uma mensagem de erro em formato JSON no response writer,
+// com o primeiro status code que for passado na chamada, ou, caso nao seja
+// preenchido, retorna com o status BadRequest.
+func (t *Tools) ErrorJSON(w http.ResponseWriter, err error, status ...int) error {
+	statusCode := http.StatusBadRequest
+	if len(status) > 0 {
+		statusCode = status[0]
+	}
+	var payload JSONResponse
+	payload.Error = true
+	payload.Message = err.Error()
+	return t.WriteJSON(w, statusCode, payload)
 }

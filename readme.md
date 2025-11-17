@@ -6,7 +6,7 @@ The included tools are:
 
 - [X] Read JSON
 - [X] Write JSON
-- [ ] Produce a JSON encoded error response
+- [X] Produce a JSON encoded error response
 - [X] Upload a file to a specified directory
 - [X] Upload multiple files to a specified directory
 - [X] Download a static file
@@ -46,6 +46,7 @@ func main() {
 	http.HandleFunc("/upload-multiple", uploadMultipleFilesHandler)
 	http.HandleFunc("/write-json", writeJSONHandler)
 	http.HandleFunc("/read-json", readJSONHandler)
+	http.HandleFunc("/error-json", errorJSONHandler)
 
 	fmt.Println("Servidor iniciado na porta 8080")
 	fmt.Println("Use os endpoints /upload-single ou /upload-multiple para testar.")
@@ -157,5 +158,25 @@ func writeJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = tools.WriteJSON(w, http.StatusOK, payload)
+}
+
+// errorJSONHandler demonstra o uso da função ErrorJSON.
+func errorJSONHandler(w http.ResponseWriter, r *http.Request) {
+	var tools toolkit.Tools
+
+	testError := errors.New("este é um erro de teste")
+
+	// Verifica se um status customizado foi passado via query param
+	// Para testar, acesse: http://localhost:8080/error-json?status=custom
+	status := r.URL.Query().Get("status")
+	if status == "custom" {
+		// Usa ErrorJSON com um status code customizado (401 Unauthorized)
+		_ = tools.ErrorJSON(w, testError, http.StatusUnauthorized)
+		return
+	}
+
+	// Por padrão, usa ErrorJSON com o status code padrão (400 Bad Request)
+	// Para testar, acesse: http://localhost:8080/error-json
+	_ = tools.ErrorJSON(w, testError)
 }
 ```

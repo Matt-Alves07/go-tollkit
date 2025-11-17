@@ -2,6 +2,8 @@ package toolkit
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -357,7 +359,6 @@ func TestTools_DownloadStaticFile(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/download", nil)
-
 		displayName := "meu_arquivo_legal.txt"
 		testTools.DownloadStaticFile(rr, req, tempDir, "testfile.txt", displayName)
 
@@ -518,4 +519,38 @@ func TestTools_WriteJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTools_ErrorJSON(t *testing.T) {
+	var testTools Tools
+
+	t.Run("default status code", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		testErr := errors.New("this is a test error")
+		_ = testTools.ErrorJSON(rr, testErr)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("ErrorJSON sem status: esperado %d; recebido %d", http.StatusBadRequest, rr.Code)
+		}
+
+		var payload JSONResponse
+		err := json.NewDecoder(rr.Body).Decode(&payload)
+		if err != nil {
+			t.Errorf("ErrorJSON sem status: falha ao decodificar corpo JSON: %s", err.Error())
+		}
+		if !payload.Error {
+			t.Error("ErrorJSON sem status: campo 'error' esperado como true")
+		}
+	})
+
+	t.Run("custom status code", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		testErr := errors.New("another test error")
+		customStatus := http.StatusUnauthorized
+		_ = testTools.ErrorJSON(rr, testErr, customStatus)
+
+		if rr.Code != customStatus {
+			t.Errorf("ErrorJSON com status: esperado %d; recebido %d", customStatus, rr.Code)
+		}
+	})
 }
