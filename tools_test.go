@@ -404,3 +404,68 @@ func TestTools_DownloadStaticFile(t *testing.T) {
 		}
 	})
 }
+
+func TestTools_ReadJSON(t *testing.T) {
+	var testTools Tools
+
+	// Define a struct para decodificação
+	type sampleStruct struct {
+		Foo string `json:"foo"`
+	}
+
+	testCases := []struct {
+		name           string
+		json           string
+		maxSize        int
+		allowUnknown   bool
+		expectedError  bool
+		expectedErrMsg string
+	}{
+		{name: "json válido", json: `{"foo": "bar"}`, allowUnknown: false, expectedError: false},
+		{name: "json malformado", json: `{"foo": "bar"`, allowUnknown: false, expectedError: true, expectedErrMsg: "body contains badly-formed JSON"},
+		{name: "tipo incorreto", json: `{"foo": 1}`, allowUnknown: false, expectedError: true, expectedErrMsg: "body contains incorrect JSON type for field \"foo\""},
+		{name: "corpo vazio", json: ``, allowUnknown: false, expectedError: true, expectedErrMsg: "body must not be empty"},
+		{name: "campo desconhecido", json: `{"foo": "bar", "baz": "qux"}`, allowUnknown: false, expectedError: true, expectedErrMsg: "body contains unknown field \"baz\""},
+		{name: "permitir campo desconhecido", json: `{"foo": "bar", "baz": "qux"}`, allowUnknown: true, expectedError: false},
+		{name: "múltiplos valores json", json: `{"foo": "bar"}{"alpha": "beta"}`, allowUnknown: false, expectedError: true, expectedErrMsg: "body must only contain a single JSON value"},
+		{name: "corpo muito grande", json: `{"foo": "uma string muito, muito, muito longa"}`, maxSize: 10, allowUnknown: false, expectedError: true, expectedErrMsg: "body must not be larger than 10 bytes"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Configura as ferramentas para o caso de teste
+			testTools.MaxJSONSize = tc.maxSize
+			testTools.AllowUnknownFields = tc.allowUnknown
+
+			// Cria a requisição
+			req, err := http.NewRequest("POST", "/", bytes.NewReader([]byte(tc.json)))
+			if err != nil {
+				t.Fatalf("Falha ao criar requisição: %v", err)
+			}
+
+			// Cria um ResponseRecorder para capturar a resposta
+			rr := httptest.NewRecorder()
+
+			// Variável para decodificar o JSON
+			var decodedJSON sampleStruct
+
+			// Chama a função a ser testada
+			err = testTools.ReadJSON(rr, req, &decodedJSON)
+
+			// Verifica os resultados
+			if tc.expectedError {
+				if err == nil {
+					t.Error("um erro era esperado, mas nenhum foi recebido")
+				} else {
+					if !strings.Contains(err.Error(), tc.expectedErrMsg) {
+						t.Errorf("mensagem de erro incorreta: esperado conter '%s', mas obteve '%s'", tc.expectedErrMsg, err.Error())
+					}
+				}
+			} else {
+				if err != nil {
+					t.Errorf("erro inesperado recebido: %v", err)
+				}
+			}
+		})
+	}
+}
