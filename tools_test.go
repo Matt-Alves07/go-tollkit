@@ -554,3 +554,59 @@ func TestTools_ErrorJSON(t *testing.T) {
 		}
 	})
 }
+
+func TestTools_PushJSONToRemote(t *testing.T) {
+	var testTools Tools
+
+	// Cria um servidor de teste para simular o endpoint remoto
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verifica o método e o content-type
+		if r.Method != "POST" {
+			t.Errorf("método incorreto: esperado POST, mas obteve %s", r.Method)
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("Content-Type incorreto: esperado application/json, mas obteve %s", r.Header.Get("Content-Type"))
+		}
+
+		// Lê o corpo da requisição para verificar os dados recebidos
+		var requestPayload struct {
+			Foo string `json:"foo"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&requestPayload)
+		if err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		// Prepara e envia a resposta
+		response := JSONResponse{
+			Error:   false,
+			Message: "recebido com sucesso",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	// Dados a serem enviados
+	dataToSend := struct {
+		Foo string `json:"foo"`
+	}{
+		Foo: "bar",
+	}
+
+	// Chama a função a ser testada
+	jsonResponse, statusCode, err := testTools.PushJSONToRemote(server.URL, dataToSend)
+	if err != nil {
+		t.Errorf("erro inesperado recebido: %v", err)
+	}
+
+	if statusCode != http.StatusCreated {
+		t.Errorf("status incorreto: esperado %d, mas obteve %d", http.StatusCreated, statusCode)
+	}
+
+	if jsonResponse.Message != "recebido com sucesso" {
+		t.Errorf("mensagem de resposta incorreta: esperado 'recebido com sucesso', mas obteve '%s'", jsonResponse.Message)
+	}
+}

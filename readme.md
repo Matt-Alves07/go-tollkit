@@ -11,7 +11,7 @@ The included tools are:
 - [X] Upload multiple files to a specified directory
 - [X] Download a static file
 - [X] Get a random string of length n
-- [ ] Post JSON to a remote service 
+- [X] Post JSON to a remote service
 - [X] Create a directory, including all parent directories, if it does not already exist
 - [X] Create a URL safe slug from a string
 
@@ -47,6 +47,7 @@ func main() {
 	http.HandleFunc("/write-json", writeJSONHandler)
 	http.HandleFunc("/read-json", readJSONHandler)
 	http.HandleFunc("/error-json", errorJSONHandler)
+	http.HandleFunc("/post-json", postJSONHandler)
 
 	fmt.Println("Servidor iniciado na porta 8080")
 	fmt.Println("Use os endpoints /upload-single ou /upload-multiple para testar.")
@@ -178,5 +179,33 @@ func errorJSONHandler(w http.ResponseWriter, r *http.Request) {
 	// Por padrão, usa ErrorJSON com o status code padrão (400 Bad Request)
 	// Para testar, acesse: http://localhost:8080/error-json
 	_ = tools.ErrorJSON(w, testError)
+}
+
+// postJSONHandler demonstra o uso da função PushJSONToRemote.
+// Este handler simula o envio de dados para um endpoint que, por sua vez, os recebe.
+func postJSONHandler(w http.ResponseWriter, r *http.Request) {
+	var tools toolkit.Tools
+
+	// Dados a serem enviados
+	payload := struct {
+		Name  string `json:"name"`
+		Value int    `json:"value"`
+	}{
+		Name:  "exemplo",
+		Value: 42,
+	}
+
+	// O endpoint de destino será o nosso próprio /read-json para demonstração.
+	// Em um caso real, seria uma URL externa.
+	// É necessário que o servidor esteja rodando para que o endpoint de destino exista.
+	uri := "http://localhost:8080/read-json"
+
+	jsonResponse, statusCode, err := tools.PushJSONToRemote(uri, payload)
+	if err != nil {
+		_ = tools.ErrorJSON(w, err)
+		return
+	}
+
+	_ = tools.WriteJSON(w, statusCode, jsonResponse)
 }
 ```
